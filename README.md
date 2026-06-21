@@ -7,13 +7,37 @@ A demonstration of enterprise API governance patterns using a microservices arch
 This project showcases how an API Gateway can centralize governance — authentication, rate limiting, and versioning — in front of independent backend microservices, rather than duplicating that logic in every service.
 
 ## Architecture
+
+
+```
+                    ┌──────────────────┐
+   Client/App ────▶ │   API Gateway    │  (port 8080)
+                    │  - API Key auth  │
+                    │  - Rate limiting │
+                    │  - v1 versioning │
+                    │  - Routing       │
+                    └────────┬─────────┘
+                ┌────────────┴────────────┐
+                ▼                         ▼
+       Payments Service             Accounts Service
+       (port 8000)                  (port 8001)
+       - Create payment             - Lookup account
+       - Check payment status       - Check balance
+       - SQLite database            - SQLite database
+                │
+                └──────calls───────▶ (validates balance
+                                       before creating
+                                       a payment)
+```
+
+
 ## Services
 
-| Service | Port | Responsibility |
-|---|---|---|
-| API Gateway | 8080 | Single entry point; auth, rate limiting, versioning, routing |
-| Payments Service | 8000 | Create and track payment transactions |
-| Accounts Service | 8001 | Customer account and balance lookups |
+| Service | Port | Responsibility | Storage |
+|---|---|---|---|
+| API Gateway | 8080 | Single entry point; auth, rate limiting, versioning, routing | N/A |
+| Payments Service | 8000 | Create and track payment transactions | SQLite (`payments.db`) |
+| Accounts Service | 8001 | Customer account and balance lookups | SQLite (`accounts.db`) |
 
 ## Running locally
 
@@ -59,20 +83,21 @@ curl -X POST http://localhost:8080/v1/payments/ \
 See `docs/adr/` for the reasoning behind these decisions.
 
 ## Tech stack
-
 - Python 3.12
 - FastAPI (microservices + gateway)
+- SQLAlchemy + SQLite (persistent storage per service)
 - httpx (inter-service communication)
 - slowapi (rate limiting)
 
+  
 ## Status
 
 This is a learning/portfolio project demonstrating enterprise API governance patterns. Not production-hardened — see Future Improvements below.
 
 ## Future improvements
-
-- Replace in-memory storage with a real database
+- Migrate from SQLite to PostgreSQL for production-grade concurrency and scalability
 - Replace hardcoded API keys with OAuth2/JWT
+- Add an event-driven layer (Kafka) for async notifications between services
 - Add distributed tracing and structured logging
 - Containerize with Docker Compose
 - Add automated tests
