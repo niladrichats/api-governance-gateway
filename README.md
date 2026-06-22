@@ -10,37 +10,34 @@ Run the entire system with one command:
 docker compose up --build
 ```
  
-That's it — all four services start automatically in the correct order.
+All four services start automatically in the correct order.
  
 ## Overview
  
-This project showcases how an API Gateway can centralize governance — OAuth2/JWT authentication, rate limiting, and versioning — in front of independent backend microservices, rather than duplicating that logic in every service.
+TrustRail showcases how an API Gateway can centralize governance — OAuth2/JWT authentication, rate limiting, and versioning — in front of independent backend microservices. A dedicated Auth Service manages users and issues signed JWT tokens. All governance is enforced at the Gateway, keeping individual services focused purely on business logic.
  
 ## Architecture
  
 ```
-                    ┌──────────────────┐
-   Client/App ────▶ │   API Gateway    │  (port 8080)
-                    │  - JWT auth      │
-                    │  - Rate limiting │
-                    │  - v1 versioning │
-                    │  - Routing       │
-                    └────────┬─────────┘
-                ┌────────────┴────────────┐
-                ▼                         ▼
-       Payments Service             Accounts Service
-       (port 8000)                  (port 8001)
-       - Create payment             - Lookup account
-       - Check payment status       - Check balance
-       - Deduct balance             - Deposit funds
-       - SQLite database            - SQLite database
-                │
-                └──────calls───────▶ (validates + deducts
-                                       balance on payment)
- 
-   Auth Service (port 8002)
-   - Issues JWT tokens
-   - Verifies credentials
+                    ┌──────────────────────┐
+   Client/App ────▶ │     API Gateway      │  (port 8080)
+                    │  - JWT verification  │
+                    │  - Rate limiting     │
+                    │  - v1 versioning     │
+                    │  - Routing           │
+                    └──────────┬───────────┘
+           ┌───────────────────┼───────────────────┐
+           ▼                   ▼                   ▼
+  Payments Service      Accounts Service      Auth Service
+   (port 8000)           (port 8001)          (port 8002)
+  - Create payment      - Lookup account     - Issue JWT tokens
+  - Check status        - Check balance      - Manage users
+  - Deduct balance      - Deposit funds      - Verify credentials
+  - SQLite database     - SQLite database    - SQLite database
+           │
+           └──────calls──────▶ Accounts Service
+                                (validates + deducts
+                                 balance on payment)
 ```
  
 ## Services
@@ -50,7 +47,7 @@ This project showcases how an API Gateway can centralize governance — OAuth2/J
 | API Gateway | 8080 | Single entry point; JWT auth, rate limiting, versioning, routing | N/A |
 | Payments Service | 8000 | Create and track payment transactions, deduct balance | SQLite (`payments.db`) |
 | Accounts Service | 8001 | Account lookups, balance checks, deposits | SQLite (`accounts.db`) |
-| Auth Service | 8002 | Issues and verifies JWT tokens | In-memory |
+| Auth Service | 8002 | Issues JWT tokens, manages users | SQLite (`auth.db`) |
  
 ## Example usage
  
@@ -97,6 +94,25 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \\
   http://localhost:8080/v1/payments/{payment_id}
 ```
  
+### User management (Auth Service)
+ 
+**Create a new user:**
+```bash
+curl -X POST http://localhost:8002/users \\
+  -H "Content-Type: application/json" \\
+  -d '{"username": "bob", "password": "bob123", "role": "user"}'
+```
+ 
+**List all users:**
+```bash
+curl http://localhost:8002/users
+```
+ 
+**Disable a user:**
+```bash
+curl -X DELETE http://localhost:8002/users/bob
+```
+ 
 ### Demo credentials
  
 | Username | Password | Role |
@@ -106,7 +122,8 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \\
  
 ## Governance features
  
-- **OAuth2/JWT Authentication** — clients authenticate via the Auth Service and receive a signed, time-limited token (30 min expiry). The Gateway verifies the token on every request.
+- **OAuth2/JWT Authentication** — clients authenticate via the Auth Service and receive a signed, time-limited token (30 min expiry). The Gateway verifies the token on every request without calling the Auth Service again.
+- **Database-backed user management** — users stored in SQLite, managed via API. Disabled users cannot obtain tokens. No code changes needed to add or remove users.
 - **Rate limiting** — 5 requests per minute per client (demo threshold)
 - **Versioning** — all routes are prefixed `/v1/`, allowing future breaking changes under `/v2/` without disrupting existing consumers
  
@@ -133,6 +150,8 @@ trustrail/
 ├── services/
 │   ├── auth/
 │   │   ├── auth_service.py
+│   │   ├── database.py
+│   │   ├── Dockerfile
 │   │   └── requirements.txt
 │   ├── payments/
 │   │   ├── payments_service.py
@@ -159,17 +178,17 @@ trustrail/
 Open four terminals:
  
 ```bash
-# Terminal 1 - Accounts Service
+# Terminal 1 - Auth Service
+source venv/bin/activate
+uvicorn services.auth.auth_service:app --reload --host 0.0.0.0 --port 8002
+ 
+# Terminal 2 - Accounts Service
 source venv/bin/activate
 uvicorn services.accounts.accounts_service:app --reload --host 0.0.0.0 --port 8001
  
-# Terminal 2 - Payments Service
+# Terminal 3 - Payments Service
 source venv/bin/activate
 uvicorn services.payments.payments_service:app --reload --host 0.0.0.0 --port 8000
- 
-# Terminal 3 - Auth Service
-source venv/bin/activate
-uvicorn services.auth.auth_service:app --reload --host 0.0.0.0 --port 8002
  
 # Terminal 4 - API Gateway
 source venv/bin/activate
@@ -178,12 +197,12 @@ uvicorn gateway.gateway:app --reload --host 0.0.0.0 --port 8080
  
 ## Status
  
-This is a portfolio project demonstrating enterprise API governance patterns for retail banking. Running in Docker containers with persistent SQLite storage and JWT authentication.
+Portfolio project demonstrating enterprise API governance patterns for retail banking. Running in Docker with persistent SQLite storage, JWT authentication, and database-backed user management.
  
 ## Future improvements
  
 - Migrate from SQLite to PostgreSQL for production-grade concurrency and scalability
-- Add an event-driven layer (Kafka) for async notifications between services
 - Add a Notifications Service for payment alerts
-- Add distributed tracing and structured logging
+- Add an event-driven layer (Kafka) for async inter-service messaging
+- Add distributed tracing and structured logging (OpenTelemetry)
 - Add automated tests
