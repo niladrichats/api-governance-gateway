@@ -16,7 +16,7 @@ All four services start automatically in the correct order.
  
 TrustRail showcases how an API Gateway can centralize governance — OAuth2/JWT authentication, rate limiting, and versioning — in front of independent backend microservices. A dedicated Auth Service manages users and issues signed JWT tokens. All governance is enforced at the Gateway, keeping individual services focused purely on business logic.
  
-## Architecture
+## Architecture — Current State
  
 ```
                     ┌──────────────────────┐
@@ -40,14 +40,57 @@ TrustRail showcases how an API Gateway can centralize governance — OAuth2/JWT 
                                  balance on payment)
 ```
  
+## Architecture — Target State (Roadmap)
+ 
+```
+                    ┌──────────────────────┐
+   Client/App ────▶ │     API Gateway      │  (port 8080)
+                    │  - JWT verification  │
+                    │  - Rate limiting     │
+                    │  - v1 versioning     │
+                    │  - Routing           │
+                    └──────────┬───────────┘
+                               ▼
+                      Payments Service
+                      publishes event:
+                      payment.received
+                               │
+                               ▼
+                    ┌──────────────────┐
+                    │   Event Bus      │
+                    │   (Kafka)        │
+                    └────────┬─────────┘
+               ┌─────────────┴──────────────┐
+               ▼                            ▼
+      Accounts Service            Fraud Detection Service
+      - Checks balance            - Calls Claude Sonnet 4.6
+      - Publishes:                - AI-powered risk scoring
+        balance.checked           - Publishes:
+                                    fraud.assessed
+               └─────────────┬──────────────┘
+                              ▼
+                     Payments Service
+                     - Receives both results
+                     - If both pass → CONFIRMED
+                     - If either fails → REJECTED
+                     - Publishes: payment.completed
+                              │
+                              ▼
+                   Notifications Service
+                   - Sends payment alert
+                     to customer
+```
+ 
 ## Services
  
 | Service | Port | Responsibility | Storage |
 |---|---|---|---|
 | API Gateway | 8080 | Single entry point; JWT auth, rate limiting, versioning, routing | N/A |
-| Payments Service | 8000 | Create and track payment transactions, deduct balance | SQLite (`payments.db`) |
+| Payments Service | 8000 | Create and track payment transactions, orchestrates payment flow | SQLite (`payments.db`) |
 | Accounts Service | 8001 | Account lookups, balance checks, deposits | SQLite (`accounts.db`) |
 | Auth Service | 8002 | Issues JWT tokens, manages users | SQLite (`auth.db`) |
+| Fraud Detection Service | 8003 | AI-powered fraud risk scoring via Claude Sonnet 4.6 | In-memory |
+| Notifications Service | 8004 | Payment alerts to customers | In-memory |
  
 ## Example usage
  
@@ -168,7 +211,8 @@ trustrail/
 │       ├── 001-api-gateway-pattern.md
 │       ├── 002-api-key-authentication.md
 │       ├── 003-api-versioning-strategy.md
-│       └── 004-jwt-authentication.md
+│       ├── 004-jwt-authentication.md
+│       └── 005-event-driven-fraud-detection.md
 ├── docker-compose.yml
 └── README.md
 ```
@@ -199,10 +243,13 @@ uvicorn gateway.gateway:app --reload --host 0.0.0.0 --port 8080
  
 Portfolio project demonstrating enterprise API governance patterns for retail banking. Running in Docker with persistent SQLite storage, JWT authentication, and database-backed user management.
  
+### In progress
+- Fraud Detection Service (AI-powered via Claude Sonnet 4.6)
+- Event-driven payment flow via Kafka
+- Notifications Service
+ 
 ## Future improvements
  
 - Migrate from SQLite to PostgreSQL for production-grade concurrency and scalability
-- Add a Notifications Service for payment alerts
-- Add an event-driven layer (Kafka) for async inter-service messaging
 - Add distributed tracing and structured logging (OpenTelemetry)
 - Add automated tests
