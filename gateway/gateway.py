@@ -3,6 +3,8 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import httpx
+import os
+
 
 app = FastAPI(title="API Gateway", version="1.0.0")
 
@@ -10,9 +12,10 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
 SERVICE_MAP = {
-    "payments": "http://localhost:8000",
-    "accounts": "http://localhost:8001",
+    "payments": os.getenv("PAYMENTS_SERVICE_URL", "http://localhost:8000"),
+    "accounts": os.getenv("ACCOUNTS_SERVICE_URL", "http://localhost:8001"),
 }
 
 VALID_API_KEYS = {"secret123"}

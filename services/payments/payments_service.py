@@ -2,13 +2,15 @@ from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from datetime import datetime
 from sqlalchemy.orm import Session
+import os
 import uuid
 import httpx
 from services.payments.database import SessionLocal, Payment
 
 app = FastAPI(title="Payments Service", version="1.0.0")
 
-ACCOUNTS_SERVICE_URL = "http://localhost:8001"
+
+ACCOUNTS_SERVICE_URL = os.getenv("ACCOUNTS_SERVICE_URL", "http://localhost:8001")
 
 
 def get_db():

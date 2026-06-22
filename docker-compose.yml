@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  accounts:
+    build:
+      context: .
+      dockerfile: services/accounts/Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - accounts_data:/app/data
+    networks:
+      - trustrail
+
+  payments:
+    build:
+      context: .
+      dockerfile: services/payments/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - payments_data:/app/data
+    depends_on:
+      - accounts
+    environment:
+      - ACCOUNTS_SERVICE_URL=http://accounts:8001
+    networks:
+      - trustrail
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - payments
+      - accounts
+    environment:
+      - PAYMENTS_SERVICE_URL=http://payments:8000
+      - ACCOUNTS_SERVICE_URL=http://accounts:8001
+    networks:
+      - trustrail
+
+networks:
+  trustrail:
+    driver: bridge
+
+volumes:
+  accounts_data:
+  payments_data:
