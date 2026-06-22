@@ -57,6 +57,13 @@ def initiate_payment(payment: PaymentRequest, db: Session = Depends(get_db)):
     db.add(new_payment)
     db.commit()
     db.refresh(new_payment)
+
+    # Deduct balance from sender's account
+    httpx.patch(
+        f"{ACCOUNTS_SERVICE_URL}/{payment.from_account}/balance/deduct",
+        json={"amount": payment.amount}
+    )
+
     return {
         "payment_id": new_payment.payment_id,
         "from_account": new_payment.from_account,

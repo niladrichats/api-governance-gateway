@@ -1,8 +1,12 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 from services.accounts.database import SessionLocal, Account
 
 app = FastAPI(title="Accounts Service", version="1.0.0")
+
+class AmountRequest(BaseModel):
+    amount: float
 
 
 def get_db():
@@ -36,8 +40,32 @@ def get_account(account_id: str ,db: Session = Depends(get_db)):
 
 
 @app.get("/{account_id}/balance")
-def get_balance(account_id: str , db: Session = Depends(get_db)):
+def get_balance(account_id: str, db: Session = Depends(get_db)):
     account = db.query(Account).filter(Account.account_id == account_id).first()
     if not account:
         return {"error": "Account not found"}
     return {"account_id": account_id, "balance": account.balance, "currency": account.currency}
+
+
+@app.patch("/{account_id}/balance/deduct")
+def deduct_balance(account_id: str, request: AmountRequest, db: Session = Depends(get_db)):
+    account = db.query(Account).filter(Account.account_id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    if account.balance < request.amount:
+        raise HTTPException(status_code=400, detail="Insufficient balance")
+    account.balance -= request.amount
+    db.commit()
+    db.refresh(account)
+    return {"account_id": account_id, "new_balance": account.balance, "currency": account.currency}
+
+
+@app.post("/{account_id}/deposit")
+def deposit(account_id: str, request: AmountRequest, db: Session = Depends(get_db)):
+    account = db.query(Account).filter(Account.account_id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    account.balance += request.amount
+    db.commit()
+    db.refresh(account)
+    return {"account_id": account_id, "new_balance": account.balance, "currency": account.currency}
