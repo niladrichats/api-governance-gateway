@@ -1,6 +1,15 @@
 version: '3.8'
 
 services:
+  auth:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    ports:
+      - "8002:8002"
+    networks:
+      - trustrail
+
   accounts:
     build:
       context: .
@@ -36,9 +45,11 @@ services:
     depends_on:
       - payments
       - accounts
+      - auth
     environment:
       - PAYMENTS_SERVICE_URL=http://payments:8000
       - ACCOUNTS_SERVICE_URL=http://accounts:8001
+      - AUTH_SERVICE_URL=http://auth:8002
     networks:
       - trustrail
 
