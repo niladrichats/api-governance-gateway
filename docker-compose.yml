@@ -1,6 +1,34 @@
 version: '3.8'
 
 services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - trustrail
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - trustrail
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
   postgres:
     image: postgres:16
     environment:
@@ -28,6 +56,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     environment:
       - DATABASE_URL=postgresql://trustrail:trustrail123@postgres/trustrail
     networks:
@@ -42,8 +72,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     environment:
       - DATABASE_URL=postgresql://trustrail:trustrail123@postgres/trustrail
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     networks:
       - trustrail
 
@@ -56,11 +89,28 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
       accounts:
         condition: service_started
     environment:
       - ACCOUNTS_SERVICE_URL=http://accounts:8001
       - DATABASE_URL=postgresql://trustrail:trustrail123@postgres/trustrail
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    networks:
+      - trustrail
+  
+  notifications:
+    build:
+      context: .
+      dockerfile: services/notifications/Dockerfile
+    ports:
+      - "8004:8004"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     networks:
       - trustrail
 

@@ -2,10 +2,13 @@ from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from datetime import datetime
 from sqlalchemy.orm import Session
-import os
 import uuid
+import os
 import httpx
+import sys
+sys.path.append('/app')
 from services.payments.database import SessionLocal, Payment
+from shared.kafka_helper import publish_event
 
 app = FastAPI(title="Payments Service", version="1.0.0")
 
@@ -58,11 +61,21 @@ def initiate_payment(payment: PaymentRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_payment)
 
-    # Deduct balance from sender's account
+    # Deduct balance from sender's account synchronously
     httpx.patch(
         f"{ACCOUNTS_SERVICE_URL}/{payment.from_account}/balance/deduct",
         json={"amount": payment.amount}
     )
+
+    # Publish payment.completed event to Kafka
+    publish_event("payment.completed", {
+        "payment_id": new_payment.payment_id,
+        "from_account": new_payment.from_account,
+        "to_account": new_payment.to_account,
+        "amount": new_payment.amount,
+        "currency": new_payment.currency,
+        "status": "COMPLETED"
+    })
 
     return {
         "payment_id": new_payment.payment_id,

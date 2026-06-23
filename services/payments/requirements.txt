@@ -3,3 +3,4 @@ uvicorn==0.34.3
 sqlalchemy==2.0.41
 httpx==0.28.1
 psycopg2-binary==2.9.10
+kafka-python-ng==2.2.3

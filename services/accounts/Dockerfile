@@ -6,6 +6,7 @@ COPY services/accounts/requirements.txt ./services/accounts/requirements.txt
 RUN pip install --no-cache-dir -r services/accounts/requirements.txt
 
 COPY services/accounts/ ./services/accounts/
+COPY shared/ ./shared/
 
 EXPOSE 8001
 

@@ -3,3 +3,4 @@ uvicorn==0.34.3
 httpx==0.28.1
 slowapi==0.1.9
 python-jose[cryptography]==3.3.0
+kafka-python-ng==2.2.3

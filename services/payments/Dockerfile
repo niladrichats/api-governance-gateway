@@ -6,6 +6,7 @@ COPY services/payments/requirements.txt ./services/payments/requirements.txt
 RUN pip install --no-cache-dir -r services/payments/requirements.txt
 
 COPY services/payments/ ./services/payments/
+COPY shared/ ./shared/
 
 EXPOSE 8000
 
