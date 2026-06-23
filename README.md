@@ -1,6 +1,6 @@
 # TrustRail — API Governance Gateway for Retail Banking Payments
  
-A demonstration of enterprise API governance patterns using a microservices architecture for a retail banking payments use case.
+A demonstration of enterprise API governance patterns using a microservices architecture for a retail banking payments use case. Features OAuth2/JWT authentication, event-driven messaging via Kafka, AI-powered fraud detection (coming soon), and full Docker containerization.
  
 ## Quick start
  
@@ -10,11 +10,11 @@ Run the entire system with one command:
 docker compose up --build
 ```
  
-All four services start automatically in the correct order.
+All eight services start automatically in the correct order.
  
 ## Overview
  
-TrustRail showcases how an API Gateway can centralize governance — OAuth2/JWT authentication, rate limiting, and versioning — in front of independent backend microservices. A dedicated Auth Service manages users and issues signed JWT tokens. All governance is enforced at the Gateway, keeping individual services focused purely on business logic.
+TrustRail showcases how an API Gateway can centralize governance — OAuth2/JWT authentication, rate limiting, and versioning — in front of independent backend microservices. Services communicate asynchronously via Kafka, enabling decoupled, parallel processing of payment events.
  
 ## Architecture — Current State
  
@@ -33,11 +33,15 @@ TrustRail showcases how an API Gateway can centralize governance — OAuth2/JWT 
   - Create payment      - Lookup account     - Issue JWT tokens
   - Check status        - Check balance      - Manage users
   - Deduct balance      - Deposit funds      - Verify credentials
-  - SQLite database     - SQLite database    - SQLite database
+  - PostgreSQL          - PostgreSQL         - PostgreSQL
            │
-           └──────calls──────▶ Accounts Service
-                                (validates + deducts
-                                 balance on payment)
+           └──── publishes ──▶ Kafka (payment.completed)
+                                        │
+                                        ▼
+                              Notifications Service
+                               (port 8004)
+                              - Consumes events
+                              - Sends payment alerts
 ```
  
 ## Architecture — Target State (Roadmap)
@@ -45,40 +49,31 @@ TrustRail showcases how an API Gateway can centralize governance — OAuth2/JWT 
 ```
                     ┌──────────────────────┐
    Client/App ────▶ │     API Gateway      │  (port 8080)
-                    │  - JWT verification  │
-                    │  - Rate limiting     │
-                    │  - v1 versioning     │
-                    │  - Routing           │
                     └──────────┬───────────┘
                                ▼
                       Payments Service
                       publishes event:
                       payment.received
                                │
+                    ┌──────────▼──────────┐
+                    │    Kafka Event Bus   │
+                    └──────────┬──────────┘
+               ┌───────────────┴───────────────┐
+               ▼                               ▼
+      Accounts Service              Fraud Detection Service
+      - Checks balance              - Calls Claude Sonnet 4.6
+      - Publishes balance.checked   - AI risk scoring
+                                    - Publishes fraud.assessed
+               └───────────────┬───────────────┘
                                ▼
-                    ┌──────────────────┐
-                    │   Event Bus      │
-                    │   (Kafka)        │
-                    └────────┬─────────┘
-               ┌─────────────┴──────────────┐
-               ▼                            ▼
-      Accounts Service            Fraud Detection Service
-      - Checks balance            - Calls Claude Sonnet 4.6
-      - Publishes:                - AI-powered risk scoring
-        balance.checked           - Publishes:
-                                    fraud.assessed
-               └─────────────┬──────────────┘
-                              ▼
-                     Payments Service
-                     - Receives both results
-                     - If both pass → CONFIRMED
-                     - If either fails → REJECTED
-                     - Publishes: payment.completed
-                              │
-                              ▼
-                   Notifications Service
-                   - Sends payment alert
-                     to customer
+                      Payments Service
+                      - Both results received
+                      - CONFIRMED or REJECTED
+                      - Publishes payment.completed
+                               │
+                               ▼
+                    Notifications Service
+                    - Sends payment alert
 ```
  
 ## Services
@@ -86,11 +81,19 @@ TrustRail showcases how an API Gateway can centralize governance — OAuth2/JWT 
 | Service | Port | Responsibility | Storage |
 |---|---|---|---|
 | API Gateway | 8080 | Single entry point; JWT auth, rate limiting, versioning, routing | N/A |
-| Payments Service | 8000 | Create and track payment transactions, orchestrates payment flow | SQLite (`payments.db`) |
-| Accounts Service | 8001 | Account lookups, balance checks, deposits | SQLite (`accounts.db`) |
-| Auth Service | 8002 | Issues JWT tokens, manages users | SQLite (`auth.db`) |
-| Fraud Detection Service | 8003 | AI-powered fraud risk scoring via Claude Sonnet 4.6 | In-memory |
-| Notifications Service | 8004 | Payment alerts to customers | In-memory |
+| Payments Service | 8000 | Create and track payments, publish Kafka events | PostgreSQL |
+| Accounts Service | 8001 | Account lookups, balance checks, deposits | PostgreSQL |
+| Auth Service | 8002 | Issues JWT tokens, manages users | PostgreSQL |
+| Notifications Service | 8004 | Consumes Kafka events, sends payment alerts | In-memory |
+| Fraud Detection Service | 8003 | AI-powered fraud scoring via Claude Sonnet 4.6 | In-memory (coming soon) |
+ 
+## Infrastructure
+ 
+| Component | Purpose |
+|---|---|
+| PostgreSQL | Persistent storage for all services |
+| Kafka | Async event bus for inter-service messaging |
+| Zookeeper | Kafka cluster coordinator |
  
 ## Example usage
  
@@ -100,11 +103,6 @@ TrustRail showcases how an API Gateway can centralize governance — OAuth2/JWT 
 curl -X POST http://localhost:8002/token \\
   -d "username=alice&password=alice123" \\
   -H "Content-Type: application/x-www-form-urlencoded"
-```
- 
-Response:
-```json
-{"access_token":"eyJhbGc...","token_type":"bearer"}
 ```
  
 ### Step 2: Use the token in all Gateway requests
@@ -131,10 +129,9 @@ curl -X POST http://localhost:8080/v1/accounts/ACC1001/deposit \\
   -d '{"amount": 1000}'
 ```
  
-**Check payment status:**
+**Check payment notifications:**
 ```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \\
-  http://localhost:8080/v1/payments/{payment_id}
+curl http://localhost:8004/notifications
 ```
  
 ### User management (Auth Service)
@@ -165,10 +162,11 @@ curl -X DELETE http://localhost:8002/users/bob
  
 ## Governance features
  
-- **OAuth2/JWT Authentication** — clients authenticate via the Auth Service and receive a signed, time-limited token (30 min expiry). The Gateway verifies the token on every request without calling the Auth Service again.
-- **Database-backed user management** — users stored in SQLite, managed via API. Disabled users cannot obtain tokens. No code changes needed to add or remove users.
+- **OAuth2/JWT Authentication** — clients authenticate via the Auth Service and receive a signed, time-limited token (30 min expiry). The Gateway verifies the token on every request.
+- **Database-backed user management** — users stored in PostgreSQL, managed via API. Disabled users cannot obtain tokens.
 - **Rate limiting** — 5 requests per minute per client (demo threshold)
 - **Versioning** — all routes are prefixed `/v1/`, allowing future breaking changes under `/v2/` without disrupting existing consumers
+- **Event-driven messaging** — payment events published to Kafka, consumed independently by Notifications and (soon) Fraud Detection
  
 See `docs/adr/` for the reasoning behind these decisions.
  
@@ -176,9 +174,10 @@ See `docs/adr/` for the reasoning behind these decisions.
  
 - Python 3.12
 - FastAPI (microservices + gateway)
-- SQLAlchemy + SQLite (persistent storage per service)
+- SQLAlchemy + PostgreSQL (persistent storage)
 - python-jose (JWT token issuance and verification)
-- httpx (inter-service communication)
+- kafka-python-ng (event-driven messaging)
+- httpx (synchronous inter-service calls)
 - slowapi (rate limiting)
 - Docker + Docker Compose (containerization)
  
@@ -190,6 +189,8 @@ trustrail/
 │   ├── gateway.py
 │   ├── Dockerfile
 │   └── requirements.txt
+├── shared/
+│   └── kafka_helper.py
 ├── services/
 │   ├── auth/
 │   │   ├── auth_service.py
@@ -201,9 +202,13 @@ trustrail/
 │   │   ├── database.py
 │   │   ├── Dockerfile
 │   │   └── requirements.txt
-│   └── accounts/
-│       ├── accounts_service.py
-│       ├── database.py
+│   ├── accounts/
+│   │   ├── accounts_service.py
+│   │   ├── database.py
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   └── notifications/
+│       ├── notifications_service.py
 │       ├── Dockerfile
 │       └── requirements.txt
 ├── docs/
@@ -219,7 +224,7 @@ trustrail/
  
 ## Running locally (without Docker)
  
-Open four terminals:
+Open five terminals:
  
 ```bash
 # Terminal 1 - Auth Service
@@ -234,22 +239,25 @@ uvicorn services.accounts.accounts_service:app --reload --host 0.0.0.0 --port 80
 source venv/bin/activate
 uvicorn services.payments.payments_service:app --reload --host 0.0.0.0 --port 8000
  
-# Terminal 4 - API Gateway
+# Terminal 4 - Notifications Service
+source venv/bin/activate
+uvicorn services.notifications.notifications_service:app --reload --host 0.0.0.0 --port 8004
+ 
+# Terminal 5 - API Gateway
 source venv/bin/activate
 uvicorn gateway.gateway:app --reload --host 0.0.0.0 --port 8080
 ```
  
 ## Status
  
-Portfolio project demonstrating enterprise API governance patterns for retail banking. Running in Docker with persistent SQLite storage, JWT authentication, and database-backed user management.
+Portfolio project demonstrating enterprise API governance patterns for retail banking. Running in Docker with PostgreSQL persistence, JWT authentication, database-backed user management, and Kafka event-driven messaging.
  
 ### In progress
 - Fraud Detection Service (AI-powered via Claude Sonnet 4.6)
-- Event-driven payment flow via Kafka
-- Notifications Service
+- Full event-driven payment flow (payment.received → parallel checks → payment.completed)
  
 ## Future improvements
  
-- Migrate from SQLite to PostgreSQL for production-grade concurrency and scalability
 - Add distributed tracing and structured logging (OpenTelemetry)
 - Add automated tests
+- Migrate to a managed Kafka service (Confluent Cloud) for production
