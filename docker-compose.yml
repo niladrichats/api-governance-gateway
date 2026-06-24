@@ -130,6 +130,21 @@ services:
       - AUTH_SERVICE_URL=http://auth:8002
     networks:
       - trustrail
+  
+  fraud_detection:
+    build:
+      context: .
+      dockerfile: services/fraud_detection/Dockerfile
+    ports:
+      - "8003:8003"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    networks:
+      - trustrail
 
 networks:
   trustrail:
