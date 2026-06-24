@@ -21,4 +21,20 @@ class Payment(Base):
     created_at = Column(DateTime)
 
 
+class RejectedPayment(Base):
+    __tablename__ = "rejected_payments"
+
+    id = Column(String, primary_key=True)
+    payment_id = Column(String)
+    from_account = Column(String)
+    to_account = Column(String)
+    amount = Column(Float)
+    currency = Column(String)
+    rejection_reason = Column(String)
+    fraud_risk_level = Column(String)
+    fraud_confidence = Column(Float)
+    fraud_reasoning = Column(String)
+    rejected_at = Column(DateTime)
+
+
 Base.metadata.create_all(bind=engine)

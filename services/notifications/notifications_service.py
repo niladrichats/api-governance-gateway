@@ -3,11 +3,17 @@ import sys
 import json
 import threading
 sys.path.append('/app')
-
 from fastapi import FastAPI
 from shared.kafka_helper import get_consumer, publish_event
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="Notifications Service", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    thread = threading.Thread(target=listen_for_payments, daemon=True)
+    thread.start()
+    yield
+
+app = FastAPI(title="Notifications Service", version="1.0.0", lifespan=lifespan)
 
 notifications_log = []
 
@@ -28,12 +34,6 @@ def listen_for_payments():
         }
         notifications_log.append(notification)
         print(f"NOTIFICATION SENT: {notification['message']}")
-
-
-@app.on_event("startup")
-def startup_event():
-    thread = threading.Thread(target=listen_for_payments, daemon=True)
-    thread.start()
 
 
 @app.get("/")

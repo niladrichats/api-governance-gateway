@@ -8,8 +8,17 @@ sys.path.append('/app')
 from fastapi import FastAPI
 from anthropic import Anthropic
 from shared.kafka_helper import get_consumer, publish_event
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="Fraud Detection Service", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Fraud Detection: lifespan triggered", flush=True)
+    thread = threading.Thread(target=listen_for_payments, daemon=True)
+    thread.start()
+    print("Fraud Detection: thread started", flush=True)
+    yield
+
+app = FastAPI(title="Fraud Detection Service", version="1.0.0", lifespan=lifespan)
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 client = Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -59,9 +68,11 @@ Respond in this exact JSON format with no other text:
 
 
 def listen_for_payments():
-    print("Fraud Detection Service: starting Kafka consumer for payment.received...")
-    consumer = get_consumer("payment.received", "fraud-detection-group-v3")
+    print("Fraud Detection Service: starting Kafka consumer for payment.received...", flush=True)
+    consumer = get_consumer("payment.received", "fraud-detection-group-v4")
+    print("Fraud Detection Service: consumer created, waiting for messages...", flush=True)
     for message in consumer:
+        print(f"Fraud Detection Service: received message on topic {message.topic}", flush=True)
         payment = message.value
         payment_id = payment.get("payment_id")
         print(f"Fraud Detection: analyzing payment {payment_id}")
@@ -100,12 +111,6 @@ def listen_for_payments():
                 "reasoning": f"Assessment error: {e}",
                 "recommended_action": "APPROVE"
             })
-
-
-@app.on_event("startup")
-def startup_event():
-    thread = threading.Thread(target=listen_for_payments, daemon=True)
-    thread.start()
 
 
 @app.get("/")

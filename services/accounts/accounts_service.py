@@ -1,13 +1,26 @@
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from contextlib import asynccontextmanager
 import threading
 import sys
 sys.path.append('/app')
 from services.accounts.database import SessionLocal, Account
 from shared.kafka_helper import get_consumer, publish_event
 
-app = FastAPI(title="Accounts Service", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Accounts Service: lifespan startup triggered")
+    try:
+        thread = threading.Thread(target=listen_for_payments, daemon=True)
+        thread.start()
+        print("Accounts Service: Kafka consumer thread started")
+    except Exception as e:
+        print(f"Accounts Service: ERROR starting thread: {e}")
+    yield
+
+app = FastAPI(title="Accounts Service", version="1.0.0", lifespan=lifespan)
+
 
 
 class AmountRequest(BaseModel):
@@ -84,11 +97,6 @@ def listen_for_payments():
         finally:
             db.close()
 
-
-@app.on_event("startup")
-def startup_event():
-    thread = threading.Thread(target=listen_for_payments, daemon=True)
-    thread.start()
 
 
 @app.get("/")

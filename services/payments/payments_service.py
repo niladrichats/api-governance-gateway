@@ -2,16 +2,23 @@ from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from datetime import datetime
 from sqlalchemy.orm import Session
+from contextlib import asynccontextmanager
 import uuid
 import os
 import httpx
 import sys
 import threading
 sys.path.append('/app')
-from services.payments.database import SessionLocal, Payment
+from services.payments.database import SessionLocal, Payment, RejectedPayment
 from shared.kafka_helper import publish_event, get_consumer
 
-app = FastAPI(title="Payments Service", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    thread = threading.Thread(target=listen_for_results, daemon=True)
+    thread.start()
+    yield
+
+app = FastAPI(title="Payments Service", version="1.0.0", lifespan=lifespan)
 
 ACCOUNTS_SERVICE_URL = os.getenv("ACCOUNTS_SERVICE_URL", "http://localhost:8001")
 
@@ -71,7 +78,29 @@ def process_saga_result(payment_id: str):
                 reason.append("insufficient balance")
             if not fraud_ok:
                 reason.append("fraud risk detected")
-            db.commit()
+
+            fraud_details = state.get("fraud_details", {})
+            rejected = RejectedPayment(
+                id=str(uuid.uuid4()),
+                payment_id=payment_id,
+                from_account=payment.from_account,
+                to_account=payment.to_account,
+                amount=payment.amount,
+                currency=payment.currency,
+                rejection_reason=", ".join(reason),
+                fraud_risk_level=fraud_details.get("risk_level"),
+                fraud_confidence=fraud_details.get("confidence"),
+                fraud_reasoning=fraud_details.get("reasoning"),
+                rejected_at=datetime.utcnow()
+            )
+            db.add(rejected)
+            try:
+                db.commit()
+                print(f"Rejected payment {payment_id} saved to database successfully")
+            except Exception as db_error:
+                print(f"ERROR saving rejected payment to database: {db_error}")
+                db.rollback()
+
             publish_event("payment.completed", {
                 "payment_id": payment_id,
                 "from_account": payment.from_account,
@@ -104,16 +133,14 @@ def listen_for_results():
         elif topic == "fraud.assessed":
             risk = event.get("risk_level", "HIGH")
             saga_state[payment_id]["fraud_assessed"] = risk != "HIGH"
+            saga_state[payment_id]["fraud_details"] = {
+                "risk_level": event.get("risk_level"),
+                "confidence": event.get("confidence"),
+                "reasoning": event.get("reasoning")
+            }
             print(f"Fraud assessment received for {payment_id}: {risk}")
 
         process_saga_result(payment_id)
-
-
-@app.on_event("startup")
-def startup_event():
-    thread = threading.Thread(target=listen_for_results, daemon=True)
-    thread.start()
-
 
 @app.get("/")
 def read_root():
@@ -158,6 +185,27 @@ def initiate_payment(payment: PaymentRequest, db: Session = Depends(get_db)):
         "message": "Payment initiated — awaiting balance and fraud checks"
     }
 
+@app.get("/rejected")
+def get_rejected_payments(db: Session = Depends(get_db)):
+    rejected = db.query(RejectedPayment).all()
+    return {
+        "count": len(rejected),
+        "rejected_payments": [
+            {
+                "payment_id": r.payment_id,
+                "from_account": r.from_account,
+                "to_account": r.to_account,
+                "amount": r.amount,
+                "currency": r.currency,
+                "rejection_reason": r.rejection_reason,
+                "fraud_risk_level": r.fraud_risk_level,
+                "fraud_confidence": r.fraud_confidence,
+                "fraud_reasoning": r.fraud_reasoning,
+                "rejected_at": r.rejected_at.isoformat()
+            }
+            for r in rejected
+        ]
+    }
 
 @app.get("/{payment_id}")
 def get_payment_status(payment_id: str, db: Session = Depends(get_db)):
