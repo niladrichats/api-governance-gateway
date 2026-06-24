@@ -22,10 +22,11 @@ def get_producer(retries=5, delay=3):
 
 
 def get_consumer(topic: str, group_id: str, retries=5, delay=3):
+    topics = [t.strip() for t in topic.split(",")]
     for attempt in range(retries):
         try:
             consumer = KafkaConsumer(
-                topic,
+                *topics,
                 bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
                 group_id=group_id,
                 value_deserializer=lambda v: json.loads(v.decode("utf-8")),

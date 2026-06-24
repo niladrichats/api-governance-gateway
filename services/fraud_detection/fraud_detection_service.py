@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import re
 import threading
 sys.path.append('/app')
 
@@ -32,6 +33,7 @@ Based on these details, provide a fraud risk assessment. Consider factors like:
 - Transaction amount (is it unusually large?)
 - Account patterns (same account sending repeatedly?)
 - Currency and amount combinations
+- Proximity to regulatory reporting thresholds (e.g. $10,000 CTR threshold)
 
 Respond in this exact JSON format with no other text:
 {{
@@ -49,9 +51,7 @@ Respond in this exact JSON format with no other text:
 
     response_text = message.content[0].text.strip()
     print(f"Claude raw response: {response_text}")
-    
-    # Extract JSON if Claude added preamble text
-    import re
+
     json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
     if json_match:
         return json.loads(json_match.group())
@@ -59,16 +59,17 @@ Respond in this exact JSON format with no other text:
 
 
 def listen_for_payments():
-    print("Fraud Detection Service: starting Kafka consumer...")
-    consumer = get_consumer("payment.completed", "fraud-detection-group-v2")
+    print("Fraud Detection Service: starting Kafka consumer for payment.received...")
+    consumer = get_consumer("payment.received", "fraud-detection-group-v3")
     for message in consumer:
         payment = message.value
-        print(f"Fraud Detection: analyzing payment {payment.get('payment_id')}")
+        payment_id = payment.get("payment_id")
+        print(f"Fraud Detection: analyzing payment {payment_id}")
 
         try:
             assessment = assess_fraud_with_claude(payment)
             result = {
-                "payment_id": payment.get("payment_id"),
+                "payment_id": payment_id,
                 "from_account": payment.get("from_account"),
                 "to_account": payment.get("to_account"),
                 "amount": payment.get("amount"),
@@ -79,10 +80,26 @@ def listen_for_payments():
                 "recommended_action": assessment.get("recommended_action")
             }
             fraud_assessments.append(result)
-            print(f"Fraud Assessment: {result['risk_level']} risk — {result['reasoning']}")
+
+            publish_event("fraud.assessed", {
+                "payment_id": payment_id,
+                "risk_level": assessment.get("risk_level"),
+                "confidence": assessment.get("confidence"),
+                "reasoning": assessment.get("reasoning"),
+                "recommended_action": assessment.get("recommended_action")
+            })
+
+            print(f"Fraud Assessment published: {result['risk_level']} risk — {result['reasoning']}")
 
         except Exception as e:
             print(f"Fraud detection error: {e}")
+            publish_event("fraud.assessed", {
+                "payment_id": payment_id,
+                "risk_level": "LOW",
+                "confidence": 0.5,
+                "reasoning": f"Assessment error: {e}",
+                "recommended_action": "APPROVE"
+            })
 
 
 @app.on_event("startup")
