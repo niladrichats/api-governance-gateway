@@ -20,6 +20,8 @@ TrustRail demonstrates how an API Gateway centralizes governance — OAuth2/JWT 
 
 ## Architecture
 
+![TrustRail Architecture](docs/images/trustrail_architecture.svg)
+
 ```
                     ┌──────────────────────┐
    Client/App ────▶ │     API Gateway      │  (port 8080)

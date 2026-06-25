@@ -1,0 +1,189 @@
+<svg width="900" height="820" viewBox="0 0 900 820" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+
+  <!-- Background -->
+  <rect width="900" height="820" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="450" y="36" text-anchor="middle" font-size="20" font-weight="700" fill="#1a1a2e">TrustRail — Enterprise Architecture</text>
+  <text x="450" y="56" text-anchor="middle" font-size="12" fill="#666">AI-Powered API Governance Gateway for Retail Banking Payments</text>
+
+  <!-- CLIENT -->
+  <rect x="325" y="72" width="250" height="40" rx="8" fill="#F8F7F3" stroke="#D3D1C7" stroke-width="1.5"/>
+  <text x="450" y="97" text-anchor="middle" font-size="13" font-weight="600" fill="#333">Client Application</text>
+
+  <!-- Arrow down -->
+  <line x1="450" y1="112" x2="450" y2="132" stroke="#999" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="460" y="125" font-size="10" fill="#999">HTTPS</text>
+
+  <!-- GATEWAY ZONE -->
+  <rect x="60" y="132" width="780" height="110" rx="12" fill="#EAF3FB" stroke="#B5D4F4" stroke-width="1.5"/>
+  <text x="76" y="152" font-size="9" font-weight="700" fill="#185FA5" letter-spacing="1">API GOVERNANCE LAYER</text>
+  <rect x="76" y="160" width="748" height="70" rx="8" fill="#ffffff" stroke="#B5D4F4" stroke-width="1"/>
+  <text x="450" y="182" text-anchor="middle" font-size="13" font-weight="700" fill="#185FA5">API Gateway</text>
+  <text x="450" y="198" text-anchor="middle" font-size="11" fill="#555">Single entry point · port 8080</text>
+  <!-- Gateway tags -->
+  <rect x="120" y="206" width="110" height="18" rx="4" fill="#E6F1FB"/>
+  <text x="175" y="219" text-anchor="middle" font-size="10" font-weight="600" fill="#185FA5">JWT verification</text>
+  <rect x="244" y="206" width="110" height="18" rx="4" fill="#E6F1FB"/>
+  <text x="299" y="219" text-anchor="middle" font-size="10" font-weight="600" fill="#185FA5">Rate limiting</text>
+  <rect x="368" y="206" width="110" height="18" rx="4" fill="#E6F1FB"/>
+  <text x="423" y="219" text-anchor="middle" font-size="10" font-weight="600" fill="#185FA5">/v1/ versioning</text>
+  <rect x="492" y="206" width="110" height="18" rx="4" fill="#E6F1FB"/>
+  <text x="547" y="219" text-anchor="middle" font-size="10" font-weight="600" fill="#185FA5">Routing</text>
+  <rect x="616" y="206" width="110" height="18" rx="4" fill="#E6F1FB"/>
+  <text x="671" y="219" text-anchor="middle" font-size="10" font-weight="600" fill="#185FA5">Zipkin tracing</text>
+
+  <!-- Arrows from gateway -->
+  <line x1="220" y1="242" x2="170" y2="272" stroke="#999" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="390" y1="242" x2="390" y2="272" stroke="#999" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="510" y1="242" x2="510" y2="272" stroke="#999" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="680" y1="242" x2="730" y2="272" stroke="#999" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- SERVICES ROW -->
+  <!-- Payments -->
+  <rect x="60" y="272" width="220" height="90" rx="8" fill="#EBF9F4" stroke="#9FE1CB" stroke-width="1.5"/>
+  <text x="170" y="294" text-anchor="middle" font-size="12" font-weight="700" fill="#0F6E56">Payments Service</text>
+  <text x="170" y="310" text-anchor="middle" font-size="10" fill="#555">Saga orchestration · port 8000</text>
+  <rect x="76" y="318" width="88" height="16" rx="4" fill="#E1F5EE"/>
+  <text x="120" y="330" text-anchor="middle" font-size="9" font-weight="600" fill="#0F6E56">PENDING→CONFIRMED</text>
+  <rect x="174" y="318" width="88" height="16" rx="4" fill="#FCEBEB"/>
+  <text x="218" y="330" text-anchor="middle" font-size="9" font-weight="600" fill="#A32D2D">REJECTED</text>
+  <rect x="76" y="338" width="88" height="16" rx="4" fill="#E1F5EE"/>
+  <text x="120" y="350" text-anchor="middle" font-size="9" font-weight="600" fill="#0F6E56">PostgreSQL</text>
+  <rect x="174" y="338" width="88" height="16" rx="4" fill="#FAEEDA"/>
+  <text x="218" y="350" text-anchor="middle" font-size="9" font-weight="600" fill="#854F0B">Kafka producer</text>
+
+  <!-- Accounts -->
+  <rect x="300" y="272" width="220" height="90" rx="8" fill="#EBF9F4" stroke="#9FE1CB" stroke-width="1.5"/>
+  <text x="410" y="294" text-anchor="middle" font-size="12" font-weight="700" fill="#0F6E56">Accounts Service</text>
+  <text x="410" y="310" text-anchor="middle" font-size="10" fill="#555">Balance checks · port 8001</text>
+  <rect x="316" y="318" width="88" height="16" rx="4" fill="#E1F5EE"/>
+  <text x="360" y="330" text-anchor="middle" font-size="9" font-weight="600" fill="#0F6E56">PostgreSQL</text>
+  <rect x="414" y="318" width="88" height="16" rx="4" fill="#FAEEDA"/>
+  <text x="458" y="330" text-anchor="middle" font-size="9" font-weight="600" fill="#854F0B">Kafka consumer</text>
+  <rect x="316" y="338" width="88" height="16" rx="4" fill="#E1F5EE"/>
+  <text x="360" y="350" text-anchor="middle" font-size="9" font-weight="600" fill="#0F6E56">Balance deduction</text>
+
+  <!-- Auth -->
+  <rect x="540" y="272" width="220" height="90" rx="8" fill="#F3F2FE" stroke="#CECBF6" stroke-width="1.5"/>
+  <text x="650" y="294" text-anchor="middle" font-size="12" font-weight="700" fill="#534AB7">Auth Service</text>
+  <text x="650" y="310" text-anchor="middle" font-size="10" fill="#555">JWT tokens · port 8002</text>
+  <rect x="556" y="318" width="88" height="16" rx="4" fill="#EEEDFE"/>
+  <text x="600" y="330" text-anchor="middle" font-size="9" font-weight="600" fill="#534AB7">OAuth2 / JWT</text>
+  <rect x="654" y="318" width="88" height="16" rx="4" fill="#EEEDFE"/>
+  <text x="698" y="330" text-anchor="middle" font-size="9" font-weight="600" fill="#534AB7">User management</text>
+  <rect x="556" y="338" width="88" height="16" rx="4" fill="#EEEDFE"/>
+  <text x="600" y="350" text-anchor="middle" font-size="9" font-weight="600" fill="#534AB7">PostgreSQL</text>
+  <rect x="654" y="338" width="88" height="16" rx="4" fill="#EEEDFE"/>
+  <text x="698" y="350" text-anchor="middle" font-size="9" font-weight="600" fill="#534AB7">30 min expiry</text>
+
+  <!-- Notifications -->
+  <rect x="760" y="272" width="80" height="90" rx="8" fill="#F8F7F3" stroke="#D3D1C7" stroke-width="1.5"/>
+  <text x="800" y="300" text-anchor="middle" font-size="11" font-weight="700" fill="#444">Notify</text>
+  <text x="800" y="315" text-anchor="middle" font-size="10" fill="#555">port 8004</text>
+  <rect x="769" y="323" width="62" height="16" rx="4" fill="#FAEEDA"/>
+  <text x="800" y="335" text-anchor="middle" font-size="9" font-weight="600" fill="#854F0B">Kafka</text>
+  <rect x="769" y="343" width="62" height="16" rx="4" fill="#FAEEDA"/>
+  <text x="800" y="355" text-anchor="middle" font-size="9" font-weight="600" fill="#854F0B">consumer</text>
+
+  <!-- Arrow from Payments down to Kafka -->
+  <line x1="170" y1="362" x2="170" y2="412" stroke="#EF9F27" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrowAmber)"/>
+
+  <!-- KAFKA ZONE -->
+  <rect x="60" y="412" width="720" height="90" rx="12" fill="#FEF6E7" stroke="#FAC775" stroke-width="1.5"/>
+  <text x="76" y="432" font-size="9" font-weight="700" fill="#854F0B" letter-spacing="1">EVENT STREAMING LAYER</text>
+  <rect x="76" y="440" width="320" height="50" rx="8" fill="#ffffff" stroke="#FAC775" stroke-width="1"/>
+  <text x="236" y="462" text-anchor="middle" font-size="12" font-weight="700" fill="#854F0B">Apache Kafka</text>
+  <text x="236" y="478" text-anchor="middle" font-size="10" fill="#555">Async event bus · decoupled messaging</text>
+  <!-- Topics -->
+  <rect x="410" y="440" width="140" height="22" rx="6" fill="#FAEEDA" stroke="#EF9F27" stroke-width="1"/>
+  <text x="480" y="456" text-anchor="middle" font-size="10" font-weight="600" fill="#854F0B" font-family="monospace">payment.received</text>
+  <rect x="558" y="440" width="130" height="22" rx="6" fill="#FAEEDA" stroke="#EF9F27" stroke-width="1"/>
+  <text x="623" y="456" text-anchor="middle" font-size="10" font-weight="600" fill="#854F0B" font-family="monospace">balance.checked</text>
+  <rect x="410" y="468" width="120" height="22" rx="6" fill="#FAEEDA" stroke="#EF9F27" stroke-width="1"/>
+  <text x="470" y="484" text-anchor="middle" font-size="10" font-weight="600" fill="#854F0B" font-family="monospace">fraud.assessed</text>
+  <rect x="538" y="468" width="140" height="22" rx="6" fill="#FAEEDA" stroke="#EF9F27" stroke-width="1"/>
+  <text x="608" y="484" text-anchor="middle" font-size="10" font-weight="600" fill="#854F0B" font-family="monospace">payment.completed</text>
+
+  <!-- Arrow from Kafka to Fraud Detection -->
+  <line x1="480" y1="502" x2="480" y2="542" stroke="#EF9F27" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrowAmber)"/>
+  <!-- Arrow from Kafka to Notifications -->
+  <line x1="720" y1="467" x2="800" y2="467" stroke="#EF9F27" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrowAmber)"/>
+  <line x1="800" y1="467" x2="800" y2="362" stroke="#EF9F27" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrowAmber)"/>
+
+  <!-- AI ZONE -->
+  <rect x="280" y="542" width="520" height="100" rx="12" fill="#FEF0EA" stroke="#F5C4B3" stroke-width="1.5"/>
+  <text x="296" y="562" font-size="9" font-weight="700" fill="#993C1D" letter-spacing="1">AI INTELLIGENCE LAYER</text>
+  <!-- Fraud Detection -->
+  <rect x="296" y="570" width="220" height="60" rx="8" fill="#ffffff" stroke="#F5C4B3" stroke-width="1"/>
+  <text x="406" y="592" text-anchor="middle" font-size="12" font-weight="700" fill="#993C1D">Fraud Detection Service</text>
+  <text x="406" y="608" text-anchor="middle" font-size="10" fill="#555">AML risk scoring · port 8003</text>
+  <rect x="306" y="616" width="80" height="16" rx="4" fill="#FAECE7"/>
+  <text x="346" y="628" text-anchor="middle" font-size="9" font-weight="600" fill="#993C1D">LOW/MED/HIGH</text>
+  <rect x="396" y="616" width="110" height="16" rx="4" fill="#FAECE7"/>
+  <text x="451" y="628" text-anchor="middle" font-size="9" font-weight="600" fill="#993C1D">Explainable reasoning</text>
+  <!-- Claude -->
+  <rect x="530" y="570" width="260" height="60" rx="8" fill="#ffffff" stroke="#F5C4B3" stroke-width="1"/>
+  <text x="660" y="592" text-anchor="middle" font-size="12" font-weight="700" fill="#993C1D">Claude Sonnet 4.6</text>
+  <text x="660" y="608" text-anchor="middle" font-size="10" fill="#555">Anthropic API · LLM fraud analysis</text>
+  <rect x="540" y="616" width="110" height="16" rx="4" fill="#FAECE7"/>
+  <text x="595" y="628" text-anchor="middle" font-size="9" font-weight="600" fill="#993C1D">CTR threshold detection</text>
+  <rect x="660" y="616" width="120" height="16" rx="4" fill="#FAECE7"/>
+  <text x="720" y="628" text-anchor="middle" font-size="9" font-weight="600" fill="#993C1D">Structuring / SAR patterns</text>
+  <!-- Arrow Fraud → Claude -->
+  <line x1="516" y1="600" x2="530" y2="600" stroke="#D85A30" stroke-width="1.5" marker-end="url(#arrowCoral)"/>
+
+  <!-- Arrow from AI down to Data -->
+  <line x1="400" y1="642" x2="400" y2="682" stroke="#999" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- DATA ZONE -->
+  <rect x="60" y="682" width="780" height="100" rx="12" fill="#F8F7F3" stroke="#D3D1C7" stroke-width="1.5"/>
+  <text x="76" y="702" font-size="9" font-weight="700" fill="#444441" letter-spacing="1">DATA PERSISTENCE LAYER</text>
+  <!-- PostgreSQL -->
+  <rect x="76" y="710" width="200" height="60" rx="8" fill="#ffffff" stroke="#D3D1C7" stroke-width="1"/>
+  <text x="176" y="732" text-anchor="middle" font-size="12" font-weight="700" fill="#444">PostgreSQL</text>
+  <text x="176" y="748" text-anchor="middle" font-size="10" fill="#555">Persistent storage</text>
+  <rect x="86" y="756" width="46" height="14" rx="3" fill="#F1EFE8"/>
+  <text x="109" y="767" text-anchor="middle" font-size="9" fill="#444">users</text>
+  <rect x="138" y="756" width="56" height="14" rx="3" fill="#F1EFE8"/>
+  <text x="166" y="767" text-anchor="middle" font-size="9" fill="#444">accounts</text>
+  <rect x="200" y="756" width="56" height="14" rx="3" fill="#F1EFE8"/>
+  <text x="228" y="767" text-anchor="middle" font-size="9" fill="#444">payments</text>
+  <!-- AML Audit -->
+  <rect x="296" y="710" width="260" height="60" rx="8" fill="#FCEBEB" stroke="#F7C1C1" stroke-width="1"/>
+  <text x="426" y="732" text-anchor="middle" font-size="12" font-weight="700" fill="#A32D2D">AML Audit Trail</text>
+  <text x="426" y="748" text-anchor="middle" font-size="10" fill="#555">Rejected payments + Claude reasoning</text>
+  <rect x="306" y="756" width="80" height="14" rx="3" fill="#FCEBEB" stroke="#F7C1C1" stroke-width="1"/>
+  <text x="346" y="767" text-anchor="middle" font-size="9" font-weight="600" fill="#A32D2D">Compliance</text>
+  <rect x="396" y="756" width="90" height="14" rx="3" fill="#FCEBEB" stroke="#F7C1C1" stroke-width="1"/>
+  <text x="441" y="767" text-anchor="middle" font-size="9" font-weight="600" fill="#A32D2D">Explainable AI</text>
+  <rect x="496" y="756" width="50" height="14" rx="3" fill="#FCEBEB" stroke="#F7C1C1" stroke-width="1"/>
+  <text x="521" y="767" text-anchor="middle" font-size="9" font-weight="600" fill="#A32D2D">Permanent</text>
+  <!-- Zipkin -->
+  <rect x="576" y="710" width="130" height="60" rx="8" fill="#ffffff" stroke="#D3D1C7" stroke-width="1"/>
+  <text x="641" y="732" text-anchor="middle" font-size="12" font-weight="700" fill="#444">Zipkin</text>
+  <text x="641" y="748" text-anchor="middle" font-size="10" fill="#555">Distributed tracing</text>
+  <rect x="586" y="756" width="110" height="14" rx="3" fill="#F1EFE8"/>
+  <text x="641" y="767" text-anchor="middle" font-size="9" fill="#444">Service dependency graph</text>
+  <!-- ADRs -->
+  <rect x="720" y="710" width="110" height="60" rx="8" fill="#ffffff" stroke="#D3D1C7" stroke-width="1"/>
+  <text x="775" y="732" text-anchor="middle" font-size="12" font-weight="700" fill="#444">5 ADRs</text>
+  <text x="775" y="748" text-anchor="middle" font-size="10" fill="#555">Architecture</text>
+  <text x="775" y="762" text-anchor="middle" font-size="10" fill="#555">decisions</text>
+  <rect x="730" y="770" width="90" height="14" rx="3" fill="#F1EFE8"/>
+  <text x="775" y="781" text-anchor="middle" font-size="9" fill="#444">docs/adr/</text>
+
+  <!-- Arrow markers -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#999" stroke-width="1.5" stroke-linecap="round"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#EF9F27" stroke-width="1.5" stroke-linecap="round"/>
+    </marker>
+    <marker id="arrowCoral" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#D85A30" stroke-width="1.5" stroke-linecap="round"/>
+    </marker>
+  </defs>
+
+</svg>
