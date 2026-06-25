@@ -11,3 +11,5 @@ __pycache__/
 # OS files
 .DS_Store
 update_readme.sh
+.env
+test_auth.db
