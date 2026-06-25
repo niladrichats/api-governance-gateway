@@ -6,6 +6,7 @@ COPY gateway/requirements.txt ./gateway/requirements.txt
 RUN pip install --no-cache-dir -r gateway/requirements.txt
 
 COPY gateway/ ./gateway/
+COPY shared/ ./shared/
 
 EXPOSE 8080
 

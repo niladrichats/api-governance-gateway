@@ -11,6 +11,7 @@ import threading
 sys.path.append('/app')
 from services.payments.database import SessionLocal, Payment, RejectedPayment
 from shared.kafka_helper import publish_event, get_consumer
+from shared.tracing import setup_tracing
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -19,6 +20,7 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="Payments Service", version="1.0.0", lifespan=lifespan)
+setup_tracing(app, "payments-service")
 
 ACCOUNTS_SERVICE_URL = os.getenv("ACCOUNTS_SERVICE_URL", "http://localhost:8001")
 

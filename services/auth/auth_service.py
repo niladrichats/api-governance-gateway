@@ -7,8 +7,10 @@ from sqlalchemy.orm import Session
 import hashlib
 import hmac
 from services.auth.database import SessionLocal, User
+from shared.tracing import setup_tracing
 
 app = FastAPI(title="Auth Service", version="1.0.0")
+setup_tracing(app, "auth-service")
 
 SECRET_KEY = "trustrail-secret-key-change-in-production"
 ALGORITHM = "HS256"

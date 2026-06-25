@@ -1,6 +1,13 @@
 version: '3.8'
 
 services:
+  zipkin:
+    image: openzipkin/zipkin:3
+    ports:
+      - "9411:9411"
+    networks:
+      - trustrail
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     environment:
@@ -60,6 +67,7 @@ services:
         condition: service_healthy
     environment:
       - DATABASE_URL=postgresql://trustrail:trustrail123@postgres/trustrail
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
     networks:
       - trustrail
 
@@ -97,6 +105,7 @@ services:
       - ACCOUNTS_SERVICE_URL=http://accounts:8001
       - DATABASE_URL=postgresql://trustrail:trustrail123@postgres/trustrail
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
     networks:
       - trustrail
   
@@ -111,6 +120,7 @@ services:
         condition: service_healthy
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
     networks:
       - trustrail
 
@@ -128,6 +138,7 @@ services:
       - PAYMENTS_SERVICE_URL=http://payments:8000
       - ACCOUNTS_SERVICE_URL=http://accounts:8001
       - AUTH_SERVICE_URL=http://auth:8002
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
     networks:
       - trustrail
   
@@ -143,6 +154,7 @@ services:
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
     networks:
       - trustrail
 

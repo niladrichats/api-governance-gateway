@@ -7,6 +7,7 @@ import sys
 sys.path.append('/app')
 from services.accounts.database import SessionLocal, Account
 from shared.kafka_helper import get_consumer, publish_event
+from shared.tracing import setup_tracing
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,6 +21,7 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="Accounts Service", version="1.0.0", lifespan=lifespan)
+setup_tracing(app, "accounts-service")
 
 
 

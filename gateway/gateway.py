@@ -5,9 +5,13 @@ from slowapi.errors import RateLimitExceeded
 from jose import JWTError, jwt
 import httpx
 import os
+import sys
+sys.path.append('/app')
+from shared.tracing import setup_tracing
 
 
 app = FastAPI(title="API Gateway", version="1.0.0")
+setup_tracing(app, "api-gateway")
 
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
