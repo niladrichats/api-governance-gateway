@@ -3,6 +3,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from jose import JWTError, jwt
+from opentelemetry import trace
 import httpx
 import os
 import sys
@@ -32,14 +33,21 @@ def verify_jwt(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
     token = authorization.split(" ")[1]
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        if not username:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        return payload
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    tracer = trace.get_tracer("api-gateway")
+    with tracer.start_as_current_span("jwt.verify") as span:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            username = payload.get("sub")
+            role = payload.get("role")
+            if not username:
+                raise HTTPException(status_code=401, detail="Invalid token")
+            span.set_attribute("auth.username", username)
+            span.set_attribute("auth.role", role or "")
+            span.set_attribute("auth.valid", True)
+            return payload
+        except JWTError:
+            span.set_attribute("auth.valid", False)
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
 @app.get("/")

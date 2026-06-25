@@ -9,6 +9,9 @@ from fastapi import FastAPI
 from anthropic import Anthropic
 from shared.kafka_helper import get_consumer, publish_event
 from contextlib import asynccontextmanager
+import sys
+sys.path.append('/app')
+from opentelemetry import trace
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,6 +23,22 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Fraud Detection Service", version="1.0.0", lifespan=lifespan)
 
+ZIPKIN_ENDPOINT = os.getenv("ZIPKIN_ENDPOINT", "http://localhost:9411/api/v2/spans")
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.zipkin.json import ZipkinExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+_resource = Resource.create({"service.name": "fraud-detection-service"})
+_provider = TracerProvider(resource=_resource)
+_exporter = ZipkinExporter(endpoint=ZIPKIN_ENDPOINT)
+_processor = BatchSpanProcessor(_exporter)
+_provider.add_span_processor(_processor)
+trace.set_tracer_provider(_provider)
+FastAPIInstrumentor.instrument_app(app)
+print(f"Tracing enabled for fraud-detection-service → {ZIPKIN_ENDPOINT}", flush=True)
+
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 client = Anthropic(api_key=ANTHROPIC_API_KEY)
 
@@ -27,7 +46,15 @@ fraud_assessments = []
 
 
 def assess_fraud_with_claude(payment: dict) -> dict:
-    prompt = f"""You are a fraud detection expert for a retail banking system.
+    tracer = trace.get_tracer("fraud-detection-service")
+    with tracer.start_as_current_span("claude.fraud_assessment") as span:
+        span.set_attribute("payment.id", payment.get("payment_id", ""))
+        span.set_attribute("payment.amount", payment.get("amount", 0))
+        span.set_attribute("payment.from_account", payment.get("from_account", ""))
+        span.set_attribute("llm.model", "claude-sonnet-4-6")
+        span.set_attribute("llm.provider", "anthropic")
+
+        prompt = f"""You are a fraud detection expert
 
 Analyze the following payment transaction and assess the fraud risk:
 
@@ -62,9 +89,15 @@ Respond in this exact JSON format with no other text:
     print(f"Claude raw response: {response_text}")
 
     json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-    if json_match:
-        return json.loads(json_match.group())
-    return json.loads(response_text)
+        if json_match:
+            result = json.loads(json_match.group())
+        else:
+            result = json.loads(response_text)
+
+        span.set_attribute("fraud.risk_level", result.get("risk_level", ""))
+        span.set_attribute("fraud.confidence", result.get("confidence", 0))
+        span.set_attribute("fraud.recommended_action", result.get("recommended_action", ""))
+        return result
 
 
 def listen_for_payments():
