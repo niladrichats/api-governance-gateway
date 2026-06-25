@@ -1,6 +1,7 @@
 fastapi==0.138.0
 uvicorn==0.34.3
 sqlalchemy==2.0.41
+httpx==0.28.1
 kafka-python-ng==2.2.3
 psycopg2-binary==2.9.10
 setuptools==69.5.1
@@ -10,3 +11,4 @@ opentelemetry-instrumentation-fastapi==0.48b0
 opentelemetry-exporter-otlp-proto-grpc==1.27.0
 opentelemetry-instrumentation-httpx==0.48b0
 opentelemetry-exporter-zipkin==1.27.0
+opentelemetry-propagator-b3==1.27.0
